@@ -33,7 +33,7 @@ tokens
 
 ### Adding the integration
 
-![base_setting](docs/images/select_integration.png)
+![select_integration](docs/images/select_integration.png)
 
 ### Basic settings
 
@@ -41,14 +41,14 @@ tokens
 
 ### Select tokens
 
-![base_setting](docs/images/select_token.png)
+![select_token](docs/images/select_token.png)
 
 ### Select token amount
 
-![base_setting](docs/images/configure_token_amount.png)
+![configure_token_amount](docs/images/configure_token_amount.png)
 
 ### Created entities
 
 For each token an entity is added and additionally a total sensor.
 
-![base_setting](docs/images/created_entities.png)
+![created_entities](docs/images/created_entities.png)
