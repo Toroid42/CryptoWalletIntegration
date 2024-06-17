@@ -1,0 +1,8 @@
+sensor:
+  - platform: crypto_wallet
+    api_token: your_api_token_here
+    tokens:
+      bitcoin: 0.5
+      ethereum: 2.0
+      ripple: 1000.0
+    scan_interval: 60
