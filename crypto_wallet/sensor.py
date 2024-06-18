@@ -191,6 +191,7 @@ class CryptoWalletTokenSensor(SensorEntity):
         self._state = None
         self._name = f"Crypto Wallet {token.upper()}"
         self._unit_of_measurement = currency
+        self._price = 0
         self.update_from_total_sensor()
 
     @property
@@ -224,6 +225,14 @@ class CryptoWalletTokenSensor(SensorEntity):
         self._amount = new_amount
         self.update_from_total_sensor()
 
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes of the sensor."""
+        return {
+            "token_price": self._price,
+            "token_amount": self._amount
+        }
+
     async def async_remove(self):
         """Remove the sensor entity."""
         await super().async_remove()
@@ -232,8 +241,8 @@ class CryptoWalletTokenSensor(SensorEntity):
         """Update the token value based on the prices fetched by the total sensor."""
         prices = self._total_sensor._prices
         if prices:
-            price = prices.get(self._token, {}).get(self._unit_of_measurement, 0)
-            token_value = price * self._amount
+            self._price = prices.get(self._token, {}).get(self._unit_of_measurement, 0)
+            token_value = self._price * self._amount
             self._state = token_value
             _LOGGER.info(f"Updated Crypto Wallet {self._token} value: {token_value:.2f} {self.unit_of_measurement}")
         else:
