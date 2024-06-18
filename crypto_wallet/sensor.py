@@ -42,14 +42,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     # Add the sensors to Home Assistant
     async_add_entities([total_sensor] + list(token_sensors.values()), True)
 
-    # Handle config update listener
-    async def _update_listener(config_entry):
-        _LOGGER.info(f"Updating Crypto Wallet sensors due to configuration change: {config_entry}")
-        total_sensor.update_config(config_entry)
-
-    config_entry.async_on_unload(config_entry.add_update_listener(_update_listener))
-
-
 class CryptoWalletTotalSensor(SensorEntity):
     """Representation of the total Crypto Wallet value sensor."""
 
