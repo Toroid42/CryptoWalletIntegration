@@ -108,7 +108,7 @@ class CryptoWalletTotalSensor(SensorEntity):
             # Remove tokens that are no longer selected
             for token in list(self._token_sensors.keys()):
                 if token not in new_tokens:
-                    self._hass.async_create_task(self._token_sensors[token].async_remove())
+                    self._hass.async_add_job(self._token_sensors[token].async_remove())
                     del self._token_sensors[token]
 
             # Add new tokens
