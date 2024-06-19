@@ -42,6 +42,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     # Add the sensors to Home Assistant
     async_add_entities([total_sensor] + list(token_sensors.values()), True)
 
+
 class CryptoWalletTotalSensor(SensorEntity):
     """Representation of the total Crypto Wallet value sensor."""
 
@@ -171,6 +172,13 @@ class CryptoWalletTotalSensor(SensorEntity):
         return total_value
 
 
+def format_number(number):
+    """Format a number and return as string"""
+    if number:
+        return f"{number:.8f}".rstrip('0').rstrip('.')
+    else:
+        return number
+
 class CryptoWalletTokenSensor(SensorEntity):
     """Representation of an individual Crypto Wallet token sensor."""
 
@@ -193,7 +201,10 @@ class CryptoWalletTokenSensor(SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        if self._state:
+            return round(self._state, 2)
+        else:
+            return self._state
 
     @property
     def unit_of_measurement(self):
@@ -220,8 +231,9 @@ class CryptoWalletTokenSensor(SensorEntity):
     def extra_state_attributes(self):
         """Return the state attributes of the sensor."""
         return {
-            "token_price": self._price,
-            "token_amount": self._amount
+            "token_price": f"{format_number(self._price)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
+            "token_amount": f"{format_number(self._amount)}",
+            "token_value": f"{format_number(self._state)}"
         }
 
     async def async_remove(self):
