@@ -184,7 +184,6 @@ class CryptoWalletTokenSensor(SensorEntity):
         self._name = f"Crypto Wallet {token.upper()}"
         self._unit_of_measurement = currency
         self._price = 0
-        self.update_from_total_sensor()
 
     @property
     def name(self):
