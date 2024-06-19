@@ -1,7 +1,7 @@
 {
   "domain": "crypto_wallet",
   "name": "Crypto Wallet",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "documentation": "https://github.com/Toroid42/CryptoWalletIntegration",
   "dependencies": [],
   "codeowners": ["@Toroid42"],

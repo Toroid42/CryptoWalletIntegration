@@ -70,7 +70,17 @@ class CryptoWalletTotalSensor(SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        if self._state:
+            return round(self._state, 2)
+        else:
+            return self._state
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes of the sensor."""
+        return {
+            "total_value": f"{format_number(self._state)} {Currency.get_currency_symbol(self._unit_of_measurement)}"
+        }
 
     @property
     def unit_of_measurement(self):
@@ -233,7 +243,7 @@ class CryptoWalletTokenSensor(SensorEntity):
         return {
             "token_price": f"{format_number(self._price)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
             "token_amount": f"{format_number(self._amount)}",
-            "token_value": f"{format_number(self._state)}"
+            "token_value": f"{format_number(self._state)} {Currency.get_currency_symbol(self._unit_of_measurement)}"
         }
 
     async def async_remove(self):
