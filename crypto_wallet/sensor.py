@@ -1,7 +1,6 @@
 import logging
 import requests
 from datetime import timedelta
-
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.util import Throttle
 
@@ -10,7 +9,8 @@ from .const import (
     CONF_BASE_CURRENCY,
     CONF_CRYPTO_TOKEN,
     CONF_SCAN_INTERVAL,
-    CONF_TOKEN_AMOUNTS
+    CONF_TOKEN_AMOUNTS,
+    DOMAIN
 )
 
 from .helpers import Currency
@@ -30,24 +30,29 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     _LOGGER.debug(f"async_setup_entry: token_amounts={token_amounts}")
 
     token_sensors = {}
+    token_change_sensors = {}
+    total_change_sensor = CryptoWalletChangeSensor("total")
     total_sensor = CryptoWalletTotalSensor(hass, config_entry, tokens, token_amounts, currency, token_sensors,
-                                           timedelta(seconds=scan_interval), async_add_entities)
+                                           timedelta(seconds=scan_interval), async_add_entities, total_change_sensor)
 
     # Add individual token sensors with the correct amounts
     for token in tokens:
         token_amount = token_amounts.get(token, 1)  # Default to 1 if not specified
-        token_sensor = CryptoWalletTokenSensor(token, token_amount, currency, total_sensor)
+        token_change_sensor = CryptoWalletChangeSensor(token)
+        token_sensor = CryptoWalletTokenSensor(token, token_amount, currency, total_sensor, token_change_sensor)
         token_sensors[token] = token_sensor
+        token_change_sensors[token] = token_change_sensor
 
     # Add the sensors to Home Assistant
-    async_add_entities([total_sensor] + list(token_sensors.values()), True)
+    async_add_entities(
+        [total_sensor, total_change_sensor] + list(token_sensors.values()) + list(token_change_sensors.values()), True)
 
 
 class CryptoWalletTotalSensor(SensorEntity):
     """Representation of the total Crypto Wallet value sensor."""
 
     def __init__(self, hass, config_entry, tokens, token_amounts, currency_symbol, token_sensors, scan_interval,
-                 async_add_entities):
+                 async_add_entities, change_sensor):
         """Initialize the sensor."""
         _LOGGER.debug("Construction of CryptoWalletTotalSensor")
         self._hass = hass
@@ -56,9 +61,12 @@ class CryptoWalletTotalSensor(SensorEntity):
         self._token_amounts = token_amounts
         self._token_sensors = token_sensors
         self._state = None
+        self._change_percentage = 0.0
         self._name = "Crypto Wallet Total"
+        self._attr_unique_id = f"{DOMAIN}_total"
         self._unit_of_measurement = currency_symbol
         self._prices = {}
+        self._change_sensor = change_sensor
         self._async_add_entities = async_add_entities
         self.update = Throttle(scan_interval)(self._update)
 
@@ -79,7 +87,8 @@ class CryptoWalletTotalSensor(SensorEntity):
     def extra_state_attributes(self):
         """Return the state attributes of the sensor."""
         return {
-            "total_value": f"{format_number(self._state)} {Currency.get_currency_symbol(self._unit_of_measurement)}"
+            "total_value": f"{format_number(self._state)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
+            "percentage_change": f"{format_number(self._change_percentage * 100)} %"
         }
 
     @property
@@ -135,6 +144,9 @@ class CryptoWalletTotalSensor(SensorEntity):
         self._prices = self.get_token_prices()
         if self._prices:
             total_value = self.calculate_wallet_value()
+            if self._state:
+                self._change_percentage = (total_value - self._state) / self._state
+                self._change_sensor.update_from_token_sensor(self._change_percentage)
             self._state = total_value
             _LOGGER.info(f"Updated Crypto Wallet total value: {total_value:.2f} {currency_symbol}")
             for sensor in self._token_sensors.values():
@@ -176,7 +188,7 @@ class CryptoWalletTotalSensor(SensorEntity):
             amount = self._token_amounts.get(token, 1)  # Use the specified amount or default to 1
             price = self._prices.get(token, {}).get(selected_currency, 0)
             token_value = price * amount
-            _LOGGER.debug(f"{token.upper()} ({amount}): {token_value:.2f} {currency_symbol}")
+            _LOGGER.debug(f"{token} ({amount}): {token_value:.2f} {currency_symbol}")
             total_value += token_value
         _LOGGER.debug(f"Total wallet value: {total_value:.2f} {currency_symbol}")
         return total_value
@@ -189,19 +201,23 @@ def format_number(number):
     else:
         return number
 
+
 class CryptoWalletTokenSensor(SensorEntity):
     """Representation of an individual Crypto Wallet token sensor."""
 
-    def __init__(self, token, amount, currency, total_sensor):
+    def __init__(self, token, amount, currency, total_sensor, change_sensor):
         """Initialize the sensor."""
         _LOGGER.debug("Construction of CryptoWalletTokenSensor")
         self._token = token
         self._amount = amount
         self._total_sensor = total_sensor
         self._state = None
-        self._name = f"Crypto Wallet {token.upper()}"
+        self._change_percentage = 0.0
+        self._name = f"Crypto Wallet {token}"
+        self._attr_unique_id = f"{DOMAIN}_{token}"
         self._unit_of_measurement = currency
         self._price = 0
+        self._change_sensor = change_sensor
 
     @property
     def name(self):
@@ -243,7 +259,8 @@ class CryptoWalletTokenSensor(SensorEntity):
         return {
             "token_price": f"{format_number(self._price)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
             "token_amount": f"{format_number(self._amount)}",
-            "token_value": f"{format_number(self._state)} {Currency.get_currency_symbol(self._unit_of_measurement)}"
+            "token_value": f"{format_number(self._state)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
+            "percentage_change": f"{format_number(self._change_percentage * 100)} %"
         }
 
     async def async_remove(self):
@@ -256,7 +273,57 @@ class CryptoWalletTokenSensor(SensorEntity):
         if prices:
             self._price = prices.get(self._token, {}).get(self._unit_of_measurement, 0)
             token_value = self._price * self._amount
+            if self._state:
+                self._change_percentage = (token_value - self._state) / self._state
+                self._change_sensor.update_from_token_sensor(self._change_percentage)
             self._state = token_value
             _LOGGER.info(f"Updated Crypto Wallet {self._token} value: {token_value:.2f} {self.unit_of_measurement}")
         else:
             _LOGGER.error(f"Failed to update Crypto Wallet {self._token} value.")
+
+
+class CryptoWalletChangeSensor(SensorEntity):
+    """Representation of an individual Crypto Wallet change sensor."""
+
+    def __init__(self, watcher_sensor):
+        """Initialize the sensor."""
+        _LOGGER.debug("Construction of CryptoWalletChangeSensor")
+        self._change_percentage = 0.0
+        self._name = f"Crypto Wallet {watcher_sensor} change"
+        self._attr_unique_id = f"{DOMAIN}_{watcher_sensor}_change"
+        self._unit_of_measurement = "%"
+        self._state = 0
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        if self._state:
+            return round(self._state, 2)
+        else:
+            return self._state
+
+    @property
+    def unit_of_measurement(self):
+        """Return the unit of measurement."""
+        return self._unit_of_measurement
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes of the sensor."""
+        return {
+            "percentage_change": f"{format_number(self._change_percentage * 100)} %"
+        }
+
+    async def async_remove(self):
+        """Remove the sensor entity."""
+        await super().async_remove()
+
+    def update_from_token_sensor(self, percentage_change):
+        """Update the change value based on the token sensor."""
+        self._change_percentage = percentage_change
+        self._state = percentage_change * 100
