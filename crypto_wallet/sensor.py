@@ -10,7 +10,7 @@ from .const import (
     CONF_CRYPTO_TOKEN,
     CONF_SCAN_INTERVAL,
     CONF_TOKEN_AMOUNTS,
-    DOMAIN
+    DOMAIN,
 )
 
 from .helpers import Currency
@@ -30,29 +30,43 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     _LOGGER.debug(f"async_setup_entry: token_amounts={token_amounts}")
 
     token_sensors = {}
-    token_change_sensors = {}
-    total_change_sensor = CryptoWalletChangeSensor("total")
-    total_sensor = CryptoWalletTotalSensor(hass, config_entry, tokens, token_amounts, currency, token_sensors,
-                                           timedelta(seconds=scan_interval), async_add_entities, total_change_sensor)
+    total_sensor = CryptoWalletTotalSensor(
+        hass,
+        config_entry,
+        tokens,
+        token_amounts,
+        currency,
+        token_sensors,
+        timedelta(seconds=scan_interval),
+        async_add_entities,
+    )
 
     # Add individual token sensors with the correct amounts
     for token in tokens:
         token_amount = token_amounts.get(token, 1)  # Default to 1 if not specified
-        token_change_sensor = CryptoWalletChangeSensor(token)
-        token_sensor = CryptoWalletTokenSensor(token, token_amount, currency, total_sensor, token_change_sensor)
+        token_sensor = CryptoWalletTokenSensor(
+            token, token_amount, currency, total_sensor
+        )
         token_sensors[token] = token_sensor
-        token_change_sensors[token] = token_change_sensor
 
     # Add the sensors to Home Assistant
-    async_add_entities(
-        [total_sensor, total_change_sensor] + list(token_sensors.values()) + list(token_change_sensors.values()), True)
+    async_add_entities([total_sensor] + list(token_sensors.values()), True)
 
 
 class CryptoWalletTotalSensor(SensorEntity):
     """Representation of the total Crypto Wallet value sensor."""
 
-    def __init__(self, hass, config_entry, tokens, token_amounts, currency_symbol, token_sensors, scan_interval,
-                 async_add_entities, change_sensor):
+    def __init__(
+        self,
+        hass,
+        config_entry,
+        tokens,
+        token_amounts,
+        currency_symbol,
+        token_sensors,
+        scan_interval,
+        async_add_entities,
+    ):
         """Initialize the sensor."""
         _LOGGER.debug("Construction of CryptoWalletTotalSensor")
         self._hass = hass
@@ -61,12 +75,10 @@ class CryptoWalletTotalSensor(SensorEntity):
         self._token_amounts = token_amounts
         self._token_sensors = token_sensors
         self._state = None
-        self._change_percentage = 0.0
         self._name = "Crypto Wallet Total"
         self._attr_unique_id = f"{DOMAIN}_total"
         self._unit_of_measurement = currency_symbol
         self._prices = {}
-        self._change_sensor = change_sensor
         self._async_add_entities = async_add_entities
         self.update = Throttle(scan_interval)(self._update)
 
@@ -88,7 +100,6 @@ class CryptoWalletTotalSensor(SensorEntity):
         """Return the state attributes of the sensor."""
         return {
             "total_value": f"{format_number(self._state)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
-            "percentage_change": f"{format_number(self._change_percentage * 100)} %"
         }
 
     @property
@@ -135,7 +146,9 @@ class CryptoWalletTotalSensor(SensorEntity):
             new_sensors = []
             for token in new_tokens:
                 if token not in self._token_sensors:
-                    new_sensor = CryptoWalletTokenSensor(token, new_token_amounts.get(token, 1), currency, self)
+                    new_sensor = CryptoWalletTokenSensor(
+                        token, new_token_amounts.get(token, 1), currency, self
+                    )
                     self._token_sensors[token] = new_sensor
                     new_sensors.append(new_sensor)
             if new_sensors:
@@ -144,11 +157,10 @@ class CryptoWalletTotalSensor(SensorEntity):
         self._prices = self.get_token_prices()
         if self._prices:
             total_value = self.calculate_wallet_value()
-            if self._state:
-                self._change_percentage = (total_value - self._state) / self._state
-                self._change_sensor.update_from_token_sensor(self._change_percentage)
             self._state = total_value
-            _LOGGER.info(f"Updated Crypto Wallet total value: {total_value:.2f} {currency_symbol}")
+            _LOGGER.info(
+                f"Updated Crypto Wallet total value: {total_value:.2f} {currency_symbol}"
+            )
             for sensor in self._token_sensors.values():
                 sensor.update_from_total_sensor()
         else:
@@ -164,10 +176,10 @@ class CryptoWalletTotalSensor(SensorEntity):
         #  If non existing token specified is the response missing or only the single token?
         params = {
             "ids": ",".join(self._tokens),
-            "vs_currencies": f"{selected_currency}"
+            "vs_currencies": f"{selected_currency}",
         }
         if access_token:
-            headers = {'x-cg-demo-api-key': f'{access_token}'}
+            headers = {"x-cg-demo-api-key": f"{access_token}"}
         else:
             headers = None
         try:
@@ -185,7 +197,9 @@ class CryptoWalletTotalSensor(SensorEntity):
         currency_symbol = Currency.get_currency_symbol(selected_currency)
         total_value = 0
         for token in self._tokens:
-            amount = self._token_amounts.get(token, 1)  # Use the specified amount or default to 1
+            amount = self._token_amounts.get(
+                token, 1
+            )  # Use the specified amount or default to 1
             price = self._prices.get(token, {}).get(selected_currency, 0)
             token_value = price * amount
             _LOGGER.debug(f"{token} ({amount}): {token_value:.2f} {currency_symbol}")
@@ -197,7 +211,7 @@ class CryptoWalletTotalSensor(SensorEntity):
 def format_number(number):
     """Format a number and return as string"""
     if number:
-        return f"{number:.8f}".rstrip('0').rstrip('.')
+        return f"{number:.8f}".rstrip("0").rstrip(".")
     else:
         return number
 
@@ -205,19 +219,17 @@ def format_number(number):
 class CryptoWalletTokenSensor(SensorEntity):
     """Representation of an individual Crypto Wallet token sensor."""
 
-    def __init__(self, token, amount, currency, total_sensor, change_sensor):
+    def __init__(self, token, amount, currency, total_sensor):
         """Initialize the sensor."""
         _LOGGER.debug("Construction of CryptoWalletTokenSensor")
         self._token = token
         self._amount = amount
         self._total_sensor = total_sensor
         self._state = None
-        self._change_percentage = 0.0
         self._name = f"Crypto Wallet {token}"
         self._attr_unique_id = f"{DOMAIN}_{token}"
         self._unit_of_measurement = currency
         self._price = 0
-        self._change_sensor = change_sensor
 
     @property
     def name(self):
@@ -260,7 +272,6 @@ class CryptoWalletTokenSensor(SensorEntity):
             "token_price": f"{format_number(self._price)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
             "token_amount": f"{format_number(self._amount)}",
             "token_value": f"{format_number(self._state)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
-            "percentage_change": f"{format_number(self._change_percentage * 100)} %"
         }
 
     async def async_remove(self):
@@ -273,11 +284,10 @@ class CryptoWalletTokenSensor(SensorEntity):
         if prices:
             self._price = prices.get(self._token, {}).get(self._unit_of_measurement, 0)
             token_value = self._price * self._amount
-            if self._state:
-                self._change_percentage = (token_value - self._state) / self._state
-                self._change_sensor.update_from_token_sensor(self._change_percentage)
             self._state = token_value
-            _LOGGER.info(f"Updated Crypto Wallet {self._token} value: {token_value:.2f} {self.unit_of_measurement}")
+            _LOGGER.info(
+                f"Updated Crypto Wallet {self._token} value: {token_value:.2f} {self.unit_of_measurement}"
+            )
         else:
             _LOGGER.error(f"Failed to update Crypto Wallet {self._token} value.")
 
@@ -288,7 +298,6 @@ class CryptoWalletChangeSensor(SensorEntity):
     def __init__(self, watcher_sensor):
         """Initialize the sensor."""
         _LOGGER.debug("Construction of CryptoWalletChangeSensor")
-        self._change_percentage = 0.0
         self._name = f"Crypto Wallet {watcher_sensor} change"
         self._attr_unique_id = f"{DOMAIN}_{watcher_sensor}_change"
         self._unit_of_measurement = "%"
@@ -312,18 +321,10 @@ class CryptoWalletChangeSensor(SensorEntity):
         """Return the unit of measurement."""
         return self._unit_of_measurement
 
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes of the sensor."""
-        return {
-            "percentage_change": f"{format_number(self._change_percentage * 100)} %"
-        }
-
     async def async_remove(self):
         """Remove the sensor entity."""
         await super().async_remove()
 
     def update_from_token_sensor(self, percentage_change):
         """Update the change value based on the token sensor."""
-        self._change_percentage = percentage_change
         self._state = percentage_change * 100
