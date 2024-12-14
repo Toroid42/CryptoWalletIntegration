@@ -164,7 +164,7 @@ class CryptoWalletOptionsFlowHandler(config_entries.OptionsFlow):
             # Notify sensors of the configuration change
             for entity in self.hass.data[DOMAIN].get(self.config_entry.entry_id, []):
                 if isinstance(entity, CryptoWalletTotalSensor):
-                    await entity._update()
+                    await entity.async_update()
 
             return self.async_create_entry(title="Crypto Wallet", data=self.config_data)
 

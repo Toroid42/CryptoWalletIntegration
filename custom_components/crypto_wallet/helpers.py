@@ -120,7 +120,54 @@ class CryptoWalletTotalSensor(SensorEntity):
         self._tokens = entry.data.get(CONF_CRYPTO_TOKEN, [])
         self._token_amounts = entry.data.get(CONF_TOKEN_AMOUNTS, {})
 
-    async def _update(self, now=None):
+    def _update(self, now=None):
+        self.async_update()
+
+    async def get_token_prices(self):
+        """Fetch the token prices from the API asynchronously."""
+        _LOGGER.debug("Fetching tokens prices from API")
+        access_token = self._config_entry.data.get(CONF_CRYPTO_API_ACCESS_TOKEN, None)
+        selected_currency = self._config_entry.data.get(CONF_BASE_CURRENCY, "usd")
+        url = "https://api.coingecko.com/api/v3/simple/price"
+
+        params = {
+            "ids": ",".join(self._tokens),
+            "vs_currencies": f"{selected_currency}",
+        }
+        if access_token:
+            headers = {"x-cg-demo-api-key": f"{access_token}"}
+        else:
+            headers = None
+
+        try:
+            # Use aiohttp for asynchronous requests
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params, headers=headers) as response:
+                    response.raise_for_status()  # Ensure status code is OK
+                    json_data = await response.json()  # Read JSON asynchronously
+                    _LOGGER.debug(f"Fetched tokens: {json_data}")
+                    return json_data
+        except aiohttp.ClientError as e:
+            _LOGGER.error(f"Error fetching token prices: {e}")
+            return None
+
+    def calculate_wallet_value(self):
+        """Calculate the total wallet value based on token prices and amounts."""
+        selected_currency = self._config_entry.data.get(CONF_BASE_CURRENCY, "usd")
+        currency_symbol = Currency.get_currency_symbol(selected_currency)
+        total_value = 0
+        for token in self._tokens:
+            amount = self._token_amounts.get(
+                token, 1
+            )  # Use the specified amount or default to 1
+            price = self._prices.get(token, {}).get(selected_currency, 0)
+            token_value = price * amount
+            _LOGGER.debug(f"{token} ({amount}): {token_value:.2f} {currency_symbol}")
+            total_value += token_value
+        _LOGGER.debug(f"Total wallet value: {total_value:.2f} {currency_symbol}")
+        return total_value
+
+    async def async_update(self):
         """Fetch the token prices and calculate the wallet value."""
         _LOGGER.debug("Updating the Crypto Wallet total value sensor.")
         new_tokens = self._config_entry.data.get(CONF_CRYPTO_TOKEN, [])
@@ -176,55 +223,6 @@ class CryptoWalletTotalSensor(SensorEntity):
                 sensor.update_from_total_sensor()
         else:
             _LOGGER.error("Failed to update Crypto Wallet total value.")
-
-    async def get_token_prices(self):
-        """Fetch the token prices from the API asynchronously."""
-        _LOGGER.debug("Fetching tokens prices from API")
-        access_token = self._config_entry.data.get(CONF_CRYPTO_API_ACCESS_TOKEN, None)
-        selected_currency = self._config_entry.data.get(CONF_BASE_CURRENCY, "usd")
-        url = "https://api.coingecko.com/api/v3/simple/price"
-
-        params = {
-            "ids": ",".join(self._tokens),
-            "vs_currencies": f"{selected_currency}",
-        }
-        if access_token:
-            headers = {"x-cg-demo-api-key": f"{access_token}"}
-        else:
-            headers = None
-
-        try:
-            # Use aiohttp for asynchronous requests
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params, headers=headers) as response:
-                    response.raise_for_status()  # Ensure status code is OK
-                    json_data = await response.json()  # Read JSON asynchronously
-                    _LOGGER.debug(f"Fetched tokens: {json_data}")
-                    return json_data
-        except aiohttp.ClientError as e:
-            _LOGGER.error(f"Error fetching token prices: {e}")
-            return None
-
-    def calculate_wallet_value(self):
-        """Calculate the total wallet value based on token prices and amounts."""
-        selected_currency = self._config_entry.data.get(CONF_BASE_CURRENCY, "usd")
-        currency_symbol = Currency.get_currency_symbol(selected_currency)
-        total_value = 0
-        for token in self._tokens:
-            amount = self._token_amounts.get(
-                token, 1
-            )  # Use the specified amount or default to 1
-            price = self._prices.get(token, {}).get(selected_currency, 0)
-            token_value = price * amount
-            _LOGGER.debug(f"{token} ({amount}): {token_value:.2f} {currency_symbol}")
-            total_value += token_value
-        _LOGGER.debug(f"Total wallet value: {total_value:.2f} {currency_symbol}")
-        return total_value
-
-    def force_update(self):
-        """Force an immediate update of token prices."""
-        _LOGGER.debug("Force updating Crypto Wallet total sensor.")
-        self._update()
 
 
 class CryptoWalletTokenSensor(SensorEntity):
