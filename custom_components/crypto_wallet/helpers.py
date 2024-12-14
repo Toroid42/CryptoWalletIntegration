@@ -224,6 +224,11 @@ class CryptoWalletTotalSensor(SensorEntity):
         else:
             _LOGGER.error("Failed to update Crypto Wallet total value.")
 
+    def update_scan_interval(self, scan_interval):
+        """Update the scan interval for the sensor."""
+        _LOGGER.debug(f"Updating scan interval to {scan_interval}")
+        self.update = Throttle(scan_interval)(self._update)
+
 
 class CryptoWalletTokenSensor(SensorEntity):
     """Representation of an individual Crypto Wallet token sensor."""

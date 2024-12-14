@@ -1,5 +1,6 @@
 """Config flow for Crypto Wallet integration."""
 
+from datetime import timedelta
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
@@ -109,9 +110,19 @@ class CryptoWalletOptionsFlowHandler(config_entries.OptionsFlow):
             self.available_tokens = await fetch_available_crypto_tokens(self.hass)
 
         if user_input is not None:
-            _LOGGER.debug(f"async_step_init: User input received: {user_input}")
             self.config_data.update(user_input)
-            return await self.async_step_token_amounts()
+
+            # Update the config entry
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=self.config_data
+            )
+
+            # Notify sensors about the configuration change
+            for entity in self.hass.data[DOMAIN].get(self.config_entry.entry_id, []):
+                if isinstance(entity, CryptoWalletTotalSensor):
+                    entity.update_scan_interval(timedelta(seconds=user_input[CONF_SCAN_INTERVAL]))
+
+            return self.async_create_entry(title="Crypto Wallet", data=self.config_data)
 
         tokens = self.config_data.get(CONF_CRYPTO_TOKEN, [])
         access_token = self.config_data.get(CONF_CRYPTO_API_ACCESS_TOKEN, "")
@@ -140,6 +151,10 @@ class CryptoWalletOptionsFlowHandler(config_entries.OptionsFlow):
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     ),
                 ),
+                vol.Optional(
+                    CONF_SCAN_INTERVAL,
+                    default=self.config_data.get(CONF_SCAN_INTERVAL, 60),
+                ): vol.All(vol.Coerce(int), vol.Range(min=10)),
             }
         )
 
