@@ -1,5 +1,6 @@
 import aiohttp
 import logging
+import locale
 from enum import Enum
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 
@@ -17,6 +18,8 @@ _LOGGER = logging.getLogger(__name__)
 
 # Initialize an empty list to store the available tokens
 available_tokens = []
+
+locale.setlocale(locale.LC_ALL, "")
 
 
 class Currency(Enum):
@@ -65,15 +68,15 @@ class CryptoWalletTotalSensor(SensorEntity):
     """Representation of the total Crypto Wallet value sensor."""
 
     def __init__(
-            self,
-            hass,
-            config_entry,
-            tokens,
-            token_amounts,
-            currency_symbol,
-            token_sensors,
-            scan_interval,
-            async_add_entities,
+        self,
+        hass,
+        config_entry,
+        tokens,
+        token_amounts,
+        currency_symbol,
+        token_sensors,
+        scan_interval,
+        async_add_entities,
     ):
         """Initialize the sensor."""
         _LOGGER.debug("Construction of CryptoWalletTotalSensor")
@@ -128,7 +131,7 @@ class CryptoWalletTotalSensor(SensorEntity):
         _LOGGER.debug("Fetching tokens prices from API")
         access_token = self._config_entry.data.get(CONF_CRYPTO_API_ACCESS_TOKEN, None)
         selected_currency = self._config_entry.data.get(CONF_BASE_CURRENCY, "usd")
-        url = "https://api.coingecko.com/api/v3/simple/price"
+        url = "https://api.coingecko.com/api/v3/simple/price?include_market_cap=true&include_24hr_vol=true&include_24hr_change=true"
 
         params = {
             "ids": ",".join(self._tokens),
@@ -247,6 +250,9 @@ class CryptoWalletTokenSensor(SensorEntity):
         self._attr_unique_id = f"{DOMAIN}_{token}"
         self._unit_of_measurement = currency
         self._price = 0
+        self._usd_market_cap = 0
+        self._usd_24h_vol = 0
+        self._usd_24h_change = 0
 
     @property
     def name(self):
@@ -289,6 +295,9 @@ class CryptoWalletTokenSensor(SensorEntity):
             "token_price": f"{format_number(self._price)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
             "token_amount": f"{format_number(self._amount)}",
             "token_value": f"{format_number(self._state)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
+            "usd_market_cap": f"{format_number(self._usd_market_cap, 2)} $",
+            "usd_24h_vol": f"{format_number(self._usd_24h_vol, 2)} $",
+            "usd_24h_change": f"{format_number(self._usd_24h_change, 2)} $",
         }
 
     async def async_remove(self):
@@ -297,9 +306,18 @@ class CryptoWalletTokenSensor(SensorEntity):
 
     def update_from_total_sensor(self):
         """Update the token value based on the prices fetched by the total sensor."""
-        prices = self._total_sensor._prices
-        if prices:
-            self._price = prices.get(self._token, {}).get(self._unit_of_measurement, 0)
+        token_data = self._total_sensor._prices
+        if token_data:
+            self._price = token_data.get(self._token, {}).get(
+                self._unit_of_measurement, 0
+            )
+            self._usd_market_cap = token_data.get(self._token, {}).get(
+                "usd_market_cap", 0
+            )
+            self._usd_24h_vol = token_data.get(self._token, {}).get("usd_24h_vol", 0)
+            self._usd_24h_change = token_data.get(self._token, {}).get(
+                "usd_24h_change", 0
+            )
             token_value = self._price * self._amount
             self._state = token_value
             _LOGGER.info(
@@ -317,9 +335,10 @@ class CryptoWalletTokenSensor(SensorEntity):
         return "monetary"
 
 
-def format_number(number):
+def format_number(number, decimals=8):
     """Format a number and return as string"""
-    if number:
-        return f"{number:.8f}".rstrip("0").rstrip(".")
+    if number is not None:  # Ensure number is not None
+        format_string = f"{{:,.{decimals}f}}"  # Create a dynamic format string
+        return format_string.format(number).rstrip("0").rstrip(".")
     else:
         return number
