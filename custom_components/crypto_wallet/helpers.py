@@ -226,7 +226,7 @@ class CryptoWalletTotalSensor(SensorEntity):
 
     @property
     def state_class(self):
-        return SensorStateClass.MEASUREMENT
+        return SensorStateClass.TOTAL
 
     @property
     def device_class(self):
@@ -310,7 +310,7 @@ class CryptoWalletTokenSensor(SensorEntity):
 
     @property
     def state_class(self):
-        return SensorStateClass.MEASUREMENT
+        return SensorStateClass.TOTAL
 
     @property
     def device_class(self):
