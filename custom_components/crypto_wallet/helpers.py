@@ -1,7 +1,7 @@
 import aiohttp
 import logging
 from enum import Enum
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 
 from homeassistant.util import Throttle
 
@@ -65,15 +65,15 @@ class CryptoWalletTotalSensor(SensorEntity):
     """Representation of the total Crypto Wallet value sensor."""
 
     def __init__(
-        self,
-        hass,
-        config_entry,
-        tokens,
-        token_amounts,
-        currency_symbol,
-        token_sensors,
-        scan_interval,
-        async_add_entities,
+            self,
+            hass,
+            config_entry,
+            tokens,
+            token_amounts,
+            currency_symbol,
+            token_sensors,
+            scan_interval,
+            async_add_entities,
     ):
         """Initialize the sensor."""
         _LOGGER.debug("Construction of CryptoWalletTotalSensor")
@@ -224,6 +224,14 @@ class CryptoWalletTotalSensor(SensorEntity):
         else:
             _LOGGER.error("Failed to update Crypto Wallet total value.")
 
+    @property
+    def state_class(self):
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def device_class(self):
+        return "monetary"
+
 
 class CryptoWalletTokenSensor(SensorEntity):
     """Representation of an individual Crypto Wallet token sensor."""
@@ -299,6 +307,14 @@ class CryptoWalletTokenSensor(SensorEntity):
             )
         else:
             _LOGGER.error(f"Failed to update Crypto Wallet {self._token} value.")
+
+    @property
+    def state_class(self):
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def device_class(self):
+        return "monetary"
 
 
 def format_number(number):
