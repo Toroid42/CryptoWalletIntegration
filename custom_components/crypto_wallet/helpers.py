@@ -250,9 +250,9 @@ class CryptoWalletTokenSensor(SensorEntity):
         self._attr_unique_id = f"{DOMAIN}_{token}"
         self._unit_of_measurement = currency
         self._price = 0
-        self._usd_market_cap = 0
-        self._usd_24h_vol = 0
-        self._usd_24h_change = 0
+        self._market_cap = 0
+        self._24h_vol = 0
+        self._24h_change = 0
 
     @property
     def name(self):
@@ -291,13 +291,14 @@ class CryptoWalletTokenSensor(SensorEntity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes of the sensor."""
+        currency_symbol = Currency.get_currency_symbol(self._unit_of_measurement)
         return {
-            "token_price": f"{format_number(self._price)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
+            "token_price": f"{format_number(self._price)} {currency_symbol}",
             "token_amount": f"{format_number(self._amount)}",
-            "token_value": f"{format_number(self._state)} {Currency.get_currency_symbol(self._unit_of_measurement)}",
-            "usd_market_cap": f"{format_number(self._usd_market_cap, 2)} $",
-            "usd_24h_vol": f"{format_number(self._usd_24h_vol, 2)} $",
-            "usd_24h_change": f"{format_number(self._usd_24h_change, 2)} $",
+            "token_value": f"{format_number(self._state)} {currency_symbol}",
+            "market_cap": f"{format_number(self._market_cap, 2)} {currency_symbol}",
+            "24h_vol": f"{format_number(self._24h_vol, 2)} {currency_symbol}",
+            "24h_change": f"{format_number(self._24h_change, 2)} {currency_symbol}",
         }
 
     async def async_remove(self):
@@ -308,15 +309,16 @@ class CryptoWalletTokenSensor(SensorEntity):
         """Update the token value based on the prices fetched by the total sensor."""
         token_data = self._total_sensor._prices
         if token_data:
-            self._price = token_data.get(self._token, {}).get(
-                self._unit_of_measurement, 0
+            currency = str(self._unit_of_measurement).lower()
+            self._price = token_data.get(self._token, {}).get(currency, 0)
+            self._market_cap = token_data.get(self._token, {}).get(
+                f"{currency}_market_cap", 0
             )
-            self._usd_market_cap = token_data.get(self._token, {}).get(
-                "usd_market_cap", 0
+            self._24h_vol = token_data.get(self._token, {}).get(
+                f"{currency}_24h_vol", 0
             )
-            self._usd_24h_vol = token_data.get(self._token, {}).get("usd_24h_vol", 0)
-            self._usd_24h_change = token_data.get(self._token, {}).get(
-                "usd_24h_change", 0
+            self._24h_change = token_data.get(self._token, {}).get(
+                f"{currency}_24h_change", 0
             )
             token_value = self._price * self._amount
             self._state = token_value
