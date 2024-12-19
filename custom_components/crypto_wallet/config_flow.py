@@ -61,8 +61,8 @@ class CryptoWalletConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     ),
                 ),
-                vol.Optional(CONF_SCAN_INTERVAL, default=60): vol.All(
-                    vol.Coerce(int), vol.Range(min=10)
+                vol.Optional(CONF_SCAN_INTERVAL, default=300): vol.All(
+                    vol.Coerce(int), vol.Range(min=60)
                 ),
             }
         )
@@ -79,7 +79,12 @@ class CryptoWalletConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         tokens = self.config_data.get(CONF_CRYPTO_TOKEN, [])
         token_amounts_schema = {
-            vol.Required(token): cv.positive_float for token in tokens
+            vol.Required(token, default=0.0): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.0, step=0.00000000001, mode=selector.NumberSelectorMode.BOX
+                )
+            )
+            for token in tokens
         }
 
         return self.async_show_form(
@@ -171,8 +176,12 @@ class CryptoWalletOptionsFlowHandler(config_entries.OptionsFlow):
         tokens = self.config_data.get(CONF_CRYPTO_TOKEN, [])
         token_amounts = self.config_entry.data.get(CONF_TOKEN_AMOUNTS, {})
         token_amounts_schema = {
-            vol.Required(token, default=token_amounts.get(token, 1.0)): vol.All(
-                vol.Coerce(float), vol.Range(min=0)
+            vol.Required(
+                token, default=token_amounts.get(token, 0.0)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.0, step=0.00000000001, mode=selector.NumberSelectorMode.BOX
+                )
             )
             for token in tokens
         }
