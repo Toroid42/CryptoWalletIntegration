@@ -2,7 +2,6 @@ import logging
 from datetime import timedelta
 
 from .const import (
-    CONF_CRYPTO_API_ACCESS_TOKEN,
     CONF_BASE_CURRENCY,
     CONF_CRYPTO_TOKEN,
     CONF_SCAN_INTERVAL,

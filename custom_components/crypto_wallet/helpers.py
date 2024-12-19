@@ -23,6 +23,8 @@ locale.setlocale(locale.LC_ALL, "")
 
 
 class Currency(Enum):
+    # TODO: get available currencies from coingecko API
+    #  see https://docs.coingecko.com/reference/simple-supported-currencies
     usd = "$"
     eur = "€"
     gbp = "£"

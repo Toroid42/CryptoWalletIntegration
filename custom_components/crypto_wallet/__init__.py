@@ -3,8 +3,6 @@
 from homeassistant.const import Platform
 import logging
 
-from .const import DOMAIN
-
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.SENSOR]
