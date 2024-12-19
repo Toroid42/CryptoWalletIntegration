@@ -79,13 +79,22 @@ class CryptoWalletConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         tokens = self.config_data.get(CONF_CRYPTO_TOKEN, [])
         token_amounts_schema = {
-            vol.Required(token, default=0.0): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.0, step=0.00000000001, mode=selector.NumberSelectorMode.BOX
-                )
+            vol.Required(token, default=0.0): vol.All(
+                vol.Coerce(float), vol.Range(min=0)
             )
             for token in tokens
         }
+        # FIXME: why is the NumberSelector not working properly?
+        # token_amounts_schema = {
+        #     vol.Required(
+        #         token, default=0.0
+        #     ): selector.NumberSelector(
+        #         selector.NumberSelectorConfig(
+        #             min=0.0, step=0.00000000001, mode=selector.NumberSelectorMode.BOX
+        #         )
+        #     )
+        #     for token in tokens
+        # }
 
         return self.async_show_form(
             step_id="token_amounts", data_schema=vol.Schema(token_amounts_schema)
@@ -176,15 +185,22 @@ class CryptoWalletOptionsFlowHandler(config_entries.OptionsFlow):
         tokens = self.config_data.get(CONF_CRYPTO_TOKEN, [])
         token_amounts = self.config_entry.data.get(CONF_TOKEN_AMOUNTS, {})
         token_amounts_schema = {
-            vol.Required(
-                token, default=token_amounts.get(token, 0.0)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.0, step=0.00000000001, mode=selector.NumberSelectorMode.BOX
-                )
+            vol.Required(token, default=token_amounts.get(token, 0.0)): vol.All(
+                vol.Coerce(float), vol.Range(min=0)
             )
             for token in tokens
         }
+        # FIXME: why is the NumberSelector not working properly?
+        # token_amounts_schema = {
+        #     vol.Required(
+        #         token, default=token_amounts.get(token, 0.0)
+        #     ): selector.NumberSelector(
+        #         selector.NumberSelectorConfig(
+        #             min=0.0, step=0.00000000001, mode=selector.NumberSelectorMode.BOX
+        #         )
+        #     )
+        #     for token in tokens
+        # }
 
         _LOGGER.debug("async_step_token_amounts: Showing form for token amounts")
         return self.async_show_form(
