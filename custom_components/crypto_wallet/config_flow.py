@@ -79,10 +79,7 @@ class CryptoWalletConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         tokens = self.config_data.get(CONF_CRYPTO_TOKEN, [])
         token_amounts_schema = {
-            vol.Required(token, default=0.0): vol.All(
-                vol.Coerce(float), vol.Range(min=0)
-            )
-            for token in tokens
+            vol.Required(token): cv.positive_float for token in tokens
         }
         # FIXME: why is the NumberSelector not working properly?
         # token_amounts_schema = {
