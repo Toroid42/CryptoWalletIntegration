@@ -1,11 +1,11 @@
 {
   "domain": "crypto_wallet",
   "name": "Crypto Wallet",
-  "version": "1.0.6",
-  "documentation": "https://github.com/Toroid42/CryptoWalletIntegration",
-  "dependencies": [],
   "codeowners": ["@Toroid42"],
-  "requirements": ["requests>=2.25.1"],
   "config_flow": true,
-  "iot_class": "cloud_polling"
+  "dependencies": [],
+  "documentation": "https://github.com/Toroid42/CryptoWalletIntegration",
+  "iot_class": "cloud_polling",
+  "requirements": ["requests>=2.25.1"],
+  "version": "1.0.6"
 }
