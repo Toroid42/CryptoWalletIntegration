@@ -125,6 +125,7 @@ class CryptoWalletOptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_token_amounts()
 
         tokens = self.config_data.get(CONF_CRYPTO_TOKEN, [])
+        scan_interval = self.config_data.get(CONF_SCAN_INTERVAL, [])
         access_token = self.config_data.get(CONF_CRYPTO_API_ACCESS_TOKEN, "")
         selected_currency = self.config_data.get(CONF_BASE_CURRENCY, "usd")
 
@@ -150,6 +151,9 @@ class CryptoWalletOptionsFlowHandler(config_entries.OptionsFlow):
                         multiple=True,
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     ),
+                ),
+                vol.Optional(CONF_SCAN_INTERVAL, default=scan_interval): vol.All(
+                    vol.Coerce(int), vol.Range(min=60)
                 ),
             }
         )
