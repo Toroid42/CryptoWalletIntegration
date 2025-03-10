@@ -140,6 +140,7 @@ class CryptoWalletTotalSensor(SensorEntity):
             "vs_currencies": f"{selected_currency}",
         }
         if access_token:
+            _LOGGER.debug(f"Using API-Key")
             headers = {"x-cg-demo-api-key": f"{access_token}"}
         else:
             headers = None
