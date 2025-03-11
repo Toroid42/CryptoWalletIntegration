@@ -46,7 +46,7 @@ class CryptoWalletConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema(
             {
-                vol.Optional(CONF_CRYPTO_API_ACCESS_TOKEN): cv.string,
+                vol.Optional(CONF_CRYPTO_API_ACCESS_TOKEN): vol.Any(cv.string, ""),
                 vol.Optional(CONF_BASE_CURRENCY): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=Currency.get_all_currency_codes(),
@@ -133,7 +133,7 @@ class CryptoWalletOptionsFlowHandler(config_entries.OptionsFlow):
             {
                 vol.Optional(
                     CONF_CRYPTO_API_ACCESS_TOKEN, default=access_token
-                ): cv.string,
+                ): vol.Any(cv.string, ""),
                 vol.Optional(
                     CONF_BASE_CURRENCY, default=selected_currency
                 ): selector.SelectSelector(
