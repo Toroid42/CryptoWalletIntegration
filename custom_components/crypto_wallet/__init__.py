@@ -12,7 +12,7 @@ async def async_setup_entry(hass, entry):
     """Set up Crypto Wallet from a config entry."""
     _LOGGER.debug(f"Setting up Crypto Wallet config entry: {entry.entry_id}")
     for platform in PLATFORMS:
-        await hass.config_entries.async_forward_entry_setup(entry, platform)
+        await hass.config_entries.async_forward_entry_setups(entry, [platform])
     return True
 
 
